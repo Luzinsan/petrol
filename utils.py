@@ -3,10 +3,13 @@ import os
 import numpy as np
 import itertools
 import datetime
+import plotly.graph_objects as go
 import plotly.express as px
 from ydata_profiling import ProfileReport
 import re
 import builtins
+from statsmodels.nonparametric.smoothers_lowess import lowess
+from scipy import signal
 
 sns_colormap = [[0.0, '#3f7f93'],
                 [0.1, '#6397a7'],
@@ -97,41 +100,72 @@ class Dataset:
         else:
             print("Признак 'Час' не найден")
 
-    def recovery_outliers(self, columns, quantiles, threshold, threshold_for_frequency=20, insert=True):
+    def smooth(self, columns, frac=0.001, window=5, polyorder=3, insert=True, method='lowess'):
         """
-
+            Сглаживание значений в указанных признаках
+            Поддерживаемые методы:
+            - lowess - Сглаживание по методу Лоусса
+            - rolling - Скользящее среднее окно
+            - savgol_filter (https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter) - Фильтр Савицкого-Голея 
+                - подгоняет последующие окна смежных данных с полиномом низкого порядка
         """
         columns = self.columns(columns)
         print("Восстановление выбросов...") if self.verbose else None
         for idx, col in enumerate(columns):
-            outliers = tuple(self.df[col].quantile(quantiles[idx]).values)
-            print(f"{col}. Значения квантилей {quantiles[idx]}: {outliers}") if self.verbose else None
-        
-            value_counts = self.df[col].value_counts()
-            value_counts: pd.Series  = value_counts[value_counts<threshold[idx]]
-            
-            print("Кол-во редких наблюдений по частоте встречаемости:", value_counts.values.sum()) if self.verbose else None
-            try:
-                rare_values = list(value_counts.keys())[-threshold_for_frequency:]
-                
-            except BaseException:
-                rare_values = list(value_counts.keys())
-            print("Учитываются значения: ", rare_values) if self.verbose else None
-        
-            mask = (
-                    (~self.df[col].between(*outliers) & self.df[col].isin(rare_values))
-                #   | ( self.df[col]<=0.0)
-                )
-            
+            match method:
+                case 'lowess':
+                    smoothed = lowess(self.df[col], range(len(self.df)), frac=frac)
+                case 'rolling':
+                    smoothed = self.df[col].rolling(window=window).mean()
+                case 'savgol_filter':
+                    smoothed = signal.savgol_filter(self.df[col],
+                               window, # window size used for filtering
+                               polyorder) # order of fitted polynomial
+                case _:
+                    raise ValueError("Указан неподдерживаемый метод")
+
             if insert:
                 index = self.cols.get_loc(col) + 1
-                new_col = "outlier|"+col
-                self.df.insert(index, new_col, 
-                        np.where(mask, np.nan, self.df[col]))
-                col = new_col
+                new_col = f'smoothed|{col}|{method}'
+                self.df.insert(index, new_col, smoothed)
             else:
-                self.df.loc[mask, col] = np.nan
-            self.df[col] = self.df[col].ffill()
+                self.df.loc[:, col] = smoothed
+
+    def show_scatter(self, column):
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=self.df['YY-MM-DD HH:00'],
+            y=self.df[column],
+            marker=dict(size=2, color='black',),
+            opacity=0.25,
+            name=column
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=self.df['YY-MM-DD HH:00'],
+            y=self.df["smoothed|"+column],
+            marker=dict(
+                size=6,
+                color='royalblue',
+                symbol='circle-open'
+            ),
+            name='Smoothed'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=self.df['YY-MM-DD HH:00'],
+            y=self.df["smoothed|"+column],
+            mode='markers',
+            marker=dict(
+                size=6,
+                color='mediumpurple',
+                symbol='triangle-up'
+            ),
+            name='Smoothed scatter'
+        ))
+
+        fig.update_layout(height=800)
+        fig.show()
 
 
     def convert_datetime(self, drop=False):

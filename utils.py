@@ -9,6 +9,7 @@ from ydata_profiling import ProfileReport
 import re
 import builtins
 from statsmodels.nonparametric.smoothers_lowess import lowess
+from phik.report import plot_correlation_matrix
 from scipy import signal
 
 sns_colormap = [[0.0, '#3f7f93'],
@@ -109,12 +110,11 @@ class Dataset:
             - savgol_filter (https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter) - Фильтр Савицкого-Голея 
                 - подгоняет последующие окна смежных данных с полиномом низкого порядка
         """
-        columns = self.columns(columns)
         print("Восстановление выбросов...") if self.verbose else None
         for idx, col in enumerate(columns):
             match method:
                 case 'lowess':
-                    smoothed = lowess(self.df[col], range(len(self.df)), frac=frac)
+                    smoothed = lowess(self.df[col], range(len(self.df)), frac=frac)[:, 1]
                 case 'rolling':
                     smoothed = self.df[col].rolling(window=window).mean()
                 case 'savgol_filter':
@@ -127,7 +127,11 @@ class Dataset:
             if insert:
                 index = self.cols.get_loc(col) + 1
                 new_col = f'smoothed|{col}|{method}'
-                self.df.insert(index, new_col, smoothed)
+                try:
+                    self.df.insert(index, new_col, smoothed)
+                except ValueError as err:
+                    print(err)
+                    self.df.loc[:, new_col] = smoothed
             else:
                 self.df.loc[:, col] = smoothed
 
@@ -140,21 +144,23 @@ class Dataset:
             opacity=0.25,
             name=column
         ))
-
+        xaxis = self.df['YY-MM-DD HH:00']
+        ylabel = self.columns("smoothed\|"+column)[0]
+        yaxis = self.df[ylabel]
         fig.add_trace(go.Scatter(
-            x=self.df['YY-MM-DD HH:00'],
-            y=self.df["smoothed|"+column],
+            x=xaxis,
+            y=yaxis,
             marker=dict(
                 size=6,
                 color='royalblue',
                 symbol='circle-open'
             ),
-            name='Smoothed'
+            name=ylabel
         ))
 
         fig.add_trace(go.Scatter(
-            x=self.df['YY-MM-DD HH:00'],
-            y=self.df["smoothed|"+column],
+            x=xaxis,
+            y=yaxis,
             mode='markers',
             marker=dict(
                 size=6,
@@ -200,7 +206,7 @@ class Dataset:
         self.df.drop(columns, axis=1, inplace=True)
 
     def time_series(self, columns=None, appendix_cols: list=['Добыча воды за 2 ч |м3 лаг:(-1)'], 
-                show=True, figsize=(1000, 3000), log=(True,False), save_path=None):
+                show=True, figsize=(900, 1900), log=(False,False), save_path=None):
         columns = self.columns(columns)
         if appendix_cols:
             columns += appendix_cols
@@ -236,13 +242,25 @@ class Dataset:
         if show:
             fig.show()
 
-    def corr_matrix(self, columns=None, filepath='./plots/corr_matrix.html', method='pearson', size=None, show=False, textfont_size=10):
+    def corr_matrix(self, columns=None, target=None, filepath='./plots/corr_matrix.html', 
+                    method='pearson', size=[300,2000], show=False, textfont_size=10):
         columns = self.columns(columns)
-        corr = self.df[columns].corr(method)
-    
-        fig = px.imshow(corr, text_auto=True, height=size[0], width=size[1],  color_continuous_scale=sns_colormap)
+       
+        if target:
+            corr = pd.concat([pd.DataFrame(self.df[columns].corr('pearson')[target]).rename(columns={target:'pearson'}).T,
+                            pd.DataFrame(self.df[columns].corr('kendall')[target]).rename(columns={target:'kendall'}).T,
+                            pd.DataFrame(self.df[columns].corr('spearman')[target]).rename(columns={target:'spearman'}).T,
+                            pd.DataFrame(self.df[columns].phik_matrix()[target]).rename(columns={target:'phik'}).T]) 
+        elif method=='phik': 
+            corr = self.df[columns].phik_matrix()
+        else:
+            corr = self.df[columns].corr(method) 
+       
+
+        fig = px.imshow(corr, text_auto=True, height=size[0], width=size[1],  color_continuous_scale=sns_colormap, title=target if target else method)
         fig.update_traces(textfont_size=textfont_size,  texttemplate = "%{z:.2f}")
         fig.write_html(filepath)
+
         if show:
             fig.show()
 

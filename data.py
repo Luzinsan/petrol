@@ -25,10 +25,21 @@ slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), s
 class Dataset:
 
     #region base
-    def __init__(self, path, dropna=True, verbose=VERBOSE):
+    def __init__(self, df: pd.DataFrame=None, verbose=VERBOSE):
         self.verbose = verbose
+        if isinstance(df, pd.DataFrame):
+            self.df = df.copy()
+            self.original = df.copy()
+        
+
+    def load(self, path, dropna=True, parse_dates=None):
         print("Чтение датасета...") if self.verbose else None
-        self.df: pd.DataFrame = pd.read_excel(path, parse_dates=['Дата'])
+        match path.split('.')[-1]:
+            case 'xlsx':
+                self.df: pd.DataFrame = pd.read_excel(path, parse_dates=parse_dates)
+            case 'csv':
+                self.df: pd.DataFrame = pd.read_csv(path, parse_dates=parse_dates)
+        
         self.original = self.df.copy()
         self.df.columns = [col.replace('|', ',') for col in self.df]
         if dropna:
@@ -179,7 +190,10 @@ class Dataset:
 
             if insert:
                 index = self.cols.get_loc(col) + 1
-                new_col = f'smoothed,{col},{method}'
+                
+                new_col = col \
+                        if col.endswith(method) \
+                        else f'smoothed,{col},{method}'
                 try:
                     self.df.insert(index, new_col, smoothed)
                 except ValueError as err:
@@ -190,8 +204,8 @@ class Dataset:
 
 
     #region plots  
-    def __plot_template(self, fig: go.Figure, filepath=FILEPATH, show=SHOW_PLOTS, figsize=FIGSIZE, append=APPEND_TO_EXISTS):
-        fig.update_layout(template=PLOT_THEME, height=figsize[0], width=figsize[1])
+    def __plot_template(self, fig: go.Figure, title='', filepath=FILEPATH, show=SHOW_PLOTS, figsize=FIGSIZE, append=APPEND_TO_EXISTS):
+        fig.update_layout(template=PLOT_THEME, height=figsize[0], width=figsize[1], title=title)
         if filepath:
             filepath = filepath if filepath.endswith('.html') else f'{filepath}.html'
             if not os.path.exists(filepath) or not append:
@@ -212,17 +226,17 @@ class Dataset:
         if show:
             return report    
 
-    def time_series(self, columns=None, appendix_cols: list=[TARGET], log=LOG, 
+    def time_series(self, columns=None, appendix_cols=None, log=LOG, time_axis=TIME_AXIS,
                     **kwargs): # filepath, show, figsize, append
         columns = self.columns(columns)
         if appendix_cols:
             columns += appendix_cols
-        if TIME_AXIS not in self.cols:
-            columns.append(TIME_AXIS)
+        if time_axis not in self.cols:
+            columns.append(time_axis)
         print("График отображает признаки: ", columns) if self.verbose else None
     
         try:
-            fig = px.line(self.df, x=TIME_AXIS, y=columns,
+            fig = px.line(self.df, x=time_axis, y=columns,
                           log_x=log[0], log_y=log[1])
             self.__plot_template(fig, **kwargs)
         except BaseException as err:

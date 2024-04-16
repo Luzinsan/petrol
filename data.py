@@ -108,7 +108,7 @@ class Dataset:
         if lag:
             self.df = pd.concat([self.df, 
                                 self.df[target].shift(lag).
-                                rename(f"{target},лаг:({lag})")], axis=1).dropna().reset_index(drop=True)
+                                rename(f"{target}, лаг {lag}")], axis=1).dropna().reset_index(drop=True)
             if drop:
                 self.df.drop(columns=target, inplace=True)
             
@@ -162,6 +162,7 @@ class Dataset:
             - savgol_filter (https://en.wikipedia.org/wiki/Savitzky%E2%80%93Golay_filter) - Фильтр Савицкого-Голея 
                 - подгоняет последующие окна смежных данных с полиномом низкого порядка
         """
+        columns = self.columns(columns)
         print("Выполняется сглаживание значений рядов: ", columns) if self.verbose else None
         for col in columns:
             match method:
@@ -189,11 +190,16 @@ class Dataset:
 
 
     #region plots  
-    def __plot_template(self, fig, filepath, show, figsize):
+    def __plot_template(self, fig: go.Figure, filepath=FILEPATH, show=SHOW_PLOTS, figsize=FIGSIZE, append=APPEND_TO_EXISTS):
         fig.update_layout(template=PLOT_THEME, height=figsize[0], width=figsize[1])
         if filepath:
-            fig.write_html(filepath)
-            print("Файл сгенерирован.") if self.verbose else None
+            filepath = filepath if filepath.endswith('.html') else f'{filepath}.html'
+            if not os.path.exists(filepath) or not append:
+                fig.write_html(filepath)
+            else:
+                with open(filepath, 'a') as f:
+                    f.write(fig.to_html(full_html=False, include_plotlyjs=False))
+            print("Файл сгенерирован: ", filepath) if self.verbose else None
         if show:
             fig.show()
 
@@ -206,8 +212,8 @@ class Dataset:
         if show:
             return report    
 
-    def time_series(self, columns=None, appendix_cols: list=[TARGET], 
-                   figsize=FIGSIZE, log=LOG, filepath=FILEPATH, show=SHOW_PLOTS):
+    def time_series(self, columns=None, appendix_cols: list=[TARGET], log=LOG, 
+                    **kwargs): # filepath, show, figsize, append
         columns = self.columns(columns)
         if appendix_cols:
             columns += appendix_cols
@@ -217,31 +223,35 @@ class Dataset:
     
         try:
             fig = px.line(self.df, x=TIME_AXIS, y=columns,
-                        height=figsize[0], width=figsize[1], log_x=log[0], log_y=log[1])
-            self.__plot_template(fig, filepath, show, figsize)
+                          log_x=log[0], log_y=log[1])
+            self.__plot_template(fig, **kwargs)
         except BaseException as err:
             print(err)
 
         
-    def scatter_matrix(self, columns=None, figsize=FIGSIZE, filepath=FILEPATH, show=SHOW_PLOTS):
+    def scatter_matrix(self, columns=None, **kwargs):
         columns = self.columns(columns)
         fig = px.scatter_matrix(self.df[columns])
         fig.update_traces(diagonal_visible=False, showlowerhalf=False)
-        self.__plot_template(fig, filepath, show, figsize)
+        self.__plot_template(fig, **kwargs)
 
-    def difference_with_smoothed(self, column, figsize=FIGSIZE, mode='markers', 
-                                 filepath=FILEPATH, show=SHOW_PLOTS):
+    def difference_with_smoothed(self, column, method='rolling',mode='markers',
+                                 **kwargs): # filepath, show, figsize, append
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=self.df[TIME_AXIS],
             y=self.df[column],
-            marker=dict(size=2, color='white',),
+            marker=dict(size=2, color='black',),
             opacity=0.25,
             name=column
         ))
         xaxis = self.df[TIME_AXIS]
-        ylabel = self.columns("smoothed,"+column)[0]
-        yaxis = self.df[ylabel]
+        try:
+            ylabel = self.columns(column+","+method)[0]
+            yaxis = self.df[ylabel]
+        except BaseException as err:
+            print(err, f'ylabel: {self.columns(column)}')
+        
         fig.add_trace(go.Scatter(
             x=xaxis,
             y=yaxis,
@@ -266,13 +276,15 @@ class Dataset:
                 name='Smoothed scatter'
             ))
 
-        self.__plot_template(fig, filepath, show, figsize)
+        self.__plot_template(fig, **kwargs)
 
 
-    def corr_matrix(self, columns=None, target=TARGET, 
-                    method='pearson', figsize=FIGSIZE, textfont_size=TEXTFONT_SIZE, 
-                    filepath=FILEPATH, show=SHOW_PLOTS):
+    def corr_matrix(self, columns=None, target=TARGET, title='',
+                    method='pearson', textfont_size=TEXTFONT_SIZE, 
+                    **kwargs): # filepath, show, figsize, append
         columns = self.columns(columns)
+        if target not in columns:
+            columns.append(target)
        
         if target:
             corr = pd.concat([pd.DataFrame(self.df[columns].corr('pearson')[target]).rename(columns={target:'pearson'}).T,
@@ -284,9 +296,9 @@ class Dataset:
         else:
             corr = self.df[columns].corr(method) 
        
-        fig = px.imshow(corr, text_auto=True,  color_continuous_scale=COLORMAP, title=target if target else method)
+        fig = px.imshow(corr, text_auto=True,  color_continuous_scale=COLORMAP, title=f'{title}: {target if target else method}')
         fig.update_traces(textfont_size=textfont_size,  texttemplate = "%{z:.2f}")
-        self.__plot_template(fig, filepath, show, figsize)
+        self.__plot_template(fig, **kwargs)
 
     #endregion
 

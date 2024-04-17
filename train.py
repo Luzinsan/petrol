@@ -44,8 +44,8 @@ class Train:
     def objective(self, trial):
         params = {
             **self.base_params,
-            "n_estimators": trial.suggest_int("n_estimators", 100, 10**3),
-            "learning_rate": trial.suggest_float("learning_rate", 1e-3, 0.2, log=True),
+            "n_estimators": trial.suggest_int("n_estimators", 100, 10**2),
+            "learning_rate": trial.suggest_float("learning_rate", 1e-2, 0.2, log=True),
             "num_leaves": trial.suggest_int("num_leaves", 2, 2**10),
             "subsample": trial.suggest_float("subsample", 0.05, 1.0),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.05, 1.0),

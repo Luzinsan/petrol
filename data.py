@@ -15,8 +15,12 @@ from statsmodels.nonparametric.smoothers_lowess import lowess
 from phik.report import plot_correlation_matrix
 from scipy import signal
 
+from sklearn import preprocessing
+
 from configs import *
 
+# from IPython import get_ipython
+# ipython = get_ipython()
 
 # slice функция по индексу для словарей
 slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), start, stop, step))
@@ -25,11 +29,13 @@ slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), s
 class Dataset:
 
     #region base
-    def __init__(self, df: pd.DataFrame=None, verbose=VERBOSE):
+    def __init__(self, df: pd.DataFrame=None, verbose=VERBOSE, cudf=False):
         self.verbose = verbose
         if isinstance(df, pd.DataFrame):
             self.df = df.copy()
             self.original = df.copy()
+        # if cudf:
+        #     ipython.magic("load_ext cudf.pandas")
         
 
     def load(self, path, dropna=True, parse_dates=None):
@@ -50,9 +56,24 @@ class Dataset:
     def __iter__(self):
         return self.cols.__iter__()
     
+    def astype(self, columns, type):
+        columns = self.columns(columns)
+        for col in columns:
+            self.df[col] = self.df[col].astype(type)
+    
     @property
     def cols(self):
         return self.df.columns
+    
+    @property
+    def data(self):
+        return self.df.iloc[:,1:-1]
+
+    
+    @property
+    def target(self):
+        return self.df.iloc[:,-1]
+    
 
     def columns(self, pattern: list|str):
         match type(pattern):
@@ -76,6 +97,22 @@ class Dataset:
                 self.df.to_csv(filename, index=False)
             case 'xslx':
                 self.df.to_excel(filename, index=False)
+
+    def __insert_or_replace(self, column, insert, method, data):
+        if insert:
+            index = self.cols.get_loc(column) + 1
+            new_col = column \
+                    if column.endswith(method) \
+                    else f'smoothed,{column},{method}'
+            print('Вставка нового столбца: ', new_col) if self.verbose else None
+            try:
+                self.df.insert(index, new_col, data)
+            except ValueError as err:
+                print(err) if self.verbose else None
+                self.df.loc[:, new_col] = data
+        else:
+            self.df.loc[:, column] = data
+
     #endregion
 
     #region time processing
@@ -152,6 +189,7 @@ class Dataset:
 
     #endregion
 
+    #region preprocessing
     def new_feature(self, columns, newcol, agg_f:str='max', drop=DROP_OLD_COLUMNS):
         columns = self.columns(columns)
         match agg_f:
@@ -188,20 +226,26 @@ class Dataset:
                 case _:
                     raise ValueError("Указан неподдерживаемый метод")
 
-            if insert:
-                index = self.cols.get_loc(col) + 1
+            self.__insert_or_replace(col, insert, method, smoothed)
+           
                 
-                new_col = col \
-                        if col.endswith(method) \
-                        else f'smoothed,{col},{method}'
-                try:
-                    self.df.insert(index, new_col, smoothed)
-                except ValueError as err:
-                    print(err) if self.verbose else None
-                    self.df.loc[:, new_col] = smoothed
-            else:
-                self.df.loc[:, col] = smoothed
 
+    def scale(self, columns, method='standard'):
+        columns = self.columns(columns)
+        print("Выполняется масштабирование значений признаков: ", columns) if self.verbose else None
+        match method:
+            case 'standard':
+                scaled = preprocessing.StandardScaler().fit_transform(self.df[columns])
+            case 'minmax':
+                scaled = preprocessing.MinMaxScaler().fit_transform(self.df[columns])
+            case _:
+                raise ValueError("Указан неподдерживаемый метод")
+        self.__insert_or_replace(columns, False, method, scaled)
+            
+
+        
+
+    #endregion
 
     #region plots  
     def __plot_template(self, fig: go.Figure, title='', filepath=FILEPATH, show=SHOW_PLOTS, figsize=FIGSIZE, append=APPEND_TO_EXISTS):

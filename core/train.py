@@ -5,6 +5,10 @@ import optuna
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, root_mean_squared_error
+import matplotlib.pyplot as plt
+import plotly.express as px
+import numpy as np
+
 
 class Train:
 
@@ -60,7 +64,7 @@ class Train:
         
     def optimize(self, study_name, n_trials=100):
         study = optuna.create_study(
-            storage="sqlite:///db.sqlite3",
+            storage="sqlite:///../db.sqlite3",
             study_name=study_name,
             directions=self.directions,
             load_if_exists=True
@@ -89,15 +93,17 @@ class Train:
                             figsize=(10,10), title="LightGBM Feature Importance (Gain)")
         plt.show()
 
-    def plot(self):
+    def plot_preds(self):
+        px.line(x=np.arange(len(self.y_val)), y=[self.y_val, self.pred], log_y=True, width=1900, height=500).show()
+
         plt.rc('font', size=11)
         plt.figure(figsize=(5, 4))
-        plt.scatter(y_val, pred_lgbm, label="LGBM")
+        plt.scatter(self.y_val, self.pred, label="LGBM")
 
-        plt.plot(y_val, y_val, label="True values", color="red")
-        plt.legend();
+        plt.plot(self.y_val, self.y_val, label="True values", color="red")
+        plt.legend()
 
-        plt.xlabel("True values");
-        plt.ylabel("Predicted values");
-    
-        
+        plt.xlabel("True values")
+        plt.ylabel("Predicted values")
+
+

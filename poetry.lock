@@ -201,7 +201,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "catboost"
-version = "1.2.3"
+version = "1.2.5"
 description = "CatBoost Python Package"
 category = "main"
 optional = false
@@ -348,7 +348,7 @@ python-versions = ">=3.9"
 
 [[package]]
 name = "cupy-cuda12x"
-version = "13.0.0"
+version = "13.1.0"
 description = "CuPy: NumPy & SciPy for GPU"
 category = "main"
 optional = false
@@ -361,7 +361,7 @@ numpy = ">=1.22,<1.29"
 [package.extras]
 all = ["scipy (>=1.7,<1.14)", "Cython (>=0.29.22,<3)", "optuna (>=2.0)"]
 stylecheck = ["autopep8 (==1.5.5)", "flake8 (==3.8.4)", "pbr (==5.5.1)", "pycodestyle (==2.6.0)", "mypy (==1.4.1)", "types-setuptools (==57.4.14)"]
-test = ["pytest (>=7.2)", "hypothesis (>=6.37.2,<6.55.0)"]
+test = ["pytest (>=7.2)", "hypothesis (>=6.37.2,<6.55.0)", "mpmath"]
 
 [[package]]
 name = "cycler"
@@ -432,7 +432,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "exceptiongroup"
-version = "1.2.0"
+version = "1.2.1"
 description = "Backport of PEP 654 (exception groups)"
 category = "main"
 optional = false
@@ -1156,11 +1156,11 @@ python-dateutil = ">=2.7"
 
 [[package]]
 name = "matplotlib-inline"
-version = "0.1.6"
+version = "0.1.7"
 description = "Inline Matplotlib backend for Jupyter"
 category = "main"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.8"
 
 [package.dependencies]
 traitlets = "*"
@@ -1299,7 +1299,7 @@ test = ["pytest (>=7.2)", "pytest-cov (>=4.0)"]
 
 [[package]]
 name = "notebook"
-version = "7.1.2"
+version = "7.1.3"
 description = "Jupyter Notebook - A web-based notebook environment for interactive computing"
 category = "main"
 optional = false
@@ -1692,7 +1692,7 @@ test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest-cov (>=4.1)", "pytes
 
 [[package]]
 name = "plotly"
-version = "5.20.0"
+version = "5.21.0"
 description = "An open-source, interactive data visualization library for Python"
 category = "main"
 optional = false
@@ -1822,8 +1822,8 @@ windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
 name = "pynvjitlink-cu12"
-version = "0.1.14"
-description = "A fake package to warn the user they are not installing the correct package."
+version = "0.2.1"
+description = "nvJitLink Python binding"
 category = "main"
 optional = false
 python-versions = ">=3.9"
@@ -2182,25 +2182,22 @@ tests = ["pytest", "typeguard", "pygments", "littleutils", "cython"]
 
 [[package]]
 name = "statsmodels"
-version = "0.14.1"
+version = "0.14.2"
 description = "Statistical computations and models for Python"
 category = "main"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 
 [package.dependencies]
-numpy = [
-    {version = ">=1.18,<2", markers = "python_version != \"3.10\" or platform_system != \"Windows\" or platform_python_implementation == \"PyPy\""},
-    {version = ">=1.22.3,<2", markers = "python_version == \"3.10\" and platform_system == \"Windows\" and platform_python_implementation != \"PyPy\""},
-]
+numpy = ">=1.22.3"
 packaging = ">=21.3"
-pandas = ">=1.0,<2.1.0 || >2.1.0"
-patsy = ">=0.5.4"
-scipy = ">=1.4,<1.9.2 || >1.9.2"
+pandas = ">=1.4,<2.1.0 || >2.1.0"
+patsy = ">=0.5.6"
+scipy = ">=1.8,<1.9.2 || >1.9.2"
 
 [package.extras]
 build = ["cython (>=0.29.33)"]
-develop = ["cython (>=0.29.33)", "cython (>=0.29.33,<4.0.0)", "setuptools-scm[toml] (>=8.0,<9.0)", "oldest-supported-numpy (>=2022.4.18)", "matplotlib (>=3)", "colorama", "joblib", "pytest (>=7.3.0)", "pytest-randomly", "pytest-xdist", "pytest-cov", "flake8", "isort", "pywinpty"]
+develop = ["cython (>=0.29.33)", "cython (>=3.0.10,<4)", "setuptools-scm[toml] (>=8.0,<9.0)", "matplotlib (>=3)", "colorama", "joblib", "pytest (>=7.3.0,<8)", "pytest-randomly", "pytest-xdist", "pytest-cov", "flake8", "isort", "pywinpty"]
 docs = ["sphinx", "nbconvert", "jupyter-client", "ipykernel", "matplotlib", "nbformat", "numpydoc", "pandas-datareader"]
 
 [[package]]
@@ -2574,7 +2571,7 @@ unicode = ["tangled-up-in-unicode (==0.2.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "1201386ddc4eed9b8016fd58f2b72a0269aa4f2456421ea76fa9212a7e25244d"
+content-hash = "9124e0790aa7560ed34b626835faa9c4edc3ea07136226836e392f2a62e492d6"
 
 [metadata.files]
 alembic = []

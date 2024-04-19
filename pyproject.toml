@@ -23,6 +23,8 @@ pandarallel = "^1.6.5"
 lightgbm = "^4.3.0"
 optuna = "^3.6.1"
 optuna-dashboard = "^0.15.1"
+statsmodels = "^0.14.2"
+phik = "^0.12.4"
 
 
 [build-system]

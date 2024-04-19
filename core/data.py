@@ -228,7 +228,19 @@ class Dataset:
 
             self.__insert_or_replace(col, insert, method, smoothed)
            
-                
+
+    def zscore(self, s, window, thresh=3, return_all=False, coeff=1.0):
+        roll = s.rolling(window=window, min_periods=1)
+        avg = roll.mean()
+        max = roll.max()
+        min = roll.min()
+        std = roll.std(coeff)
+        z = s.sub(avg).div(std)   
+        m = z.between(-thresh, thresh)
+        
+        if return_all:
+            return s.where(m, avg), max, min
+        return s.where(m, avg)
 
     def scale(self, columns, method='standard'):
         columns = self.columns(columns)

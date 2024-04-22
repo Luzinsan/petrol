@@ -161,7 +161,7 @@ class Dataset:
 
     def clear_dataset_moisture(self, df):
       df_moisture = df.copy()
-      df_moisture = df_moisture.iloc[1855:, [0, 22, 27]]
+      df_moisture = df_moisture.iloc[:, [0, 22, 27]]
       df_moisture = self.get_moisture(df_moisture)
       df_moisture = self.rename_cols(df_moisture, 'moisture')
       df_moisture = df_moisture.reset_index(drop=True)
@@ -279,10 +279,10 @@ class Dataset:
 
 dataset = Dataset('~/notebooks/petrol/data/raw/2023/Режимный_лист_МУИС_2023.xlsx')
 parsing_pages = [
-    'Январь 2023',
+    # 'Январь 2023',
     'Февраль 2023',
-    'Март 2023',
+    # 'Март 2023',
 ]
-data_full_2500 = dataset.create_dataset_2500(parsing_pages)
-data_full_1250 = dataset.create_dataset_1250(parsing_pages)
+# data_full_2500 = dataset.create_dataset_2500(parsing_pages)
+# data_full_1250 = dataset.create_dataset_1250(parsing_pages)
 data_full_moisture = dataset.create_dataset_1250_moisture(parsing_pages)

@@ -1,6 +1,8 @@
 from core.configs import *
 from core.data import Dataset
 import lightgbm as lgb
+import catboost
+
 import optuna
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -12,22 +14,39 @@ import numpy as np
 
 class Train:
 
-    def __init__(self, df: Dataset, 
+    def __init__(self, df: Dataset, model_name='lgbm',
                  metrics=["r2", "mae", "mse", "rmse"], 
                  directions=['maximize', 'minimize', 'minimize', 'minimize']):
         self.X_train, self.X_val, self.y_train, self.y_val = train_test_split(df.data, df.target, 
                                                           test_size=0.2, random_state=2024)
-        self.base_params = {
-            "objective": "regression",
-            "metrics": metrics,
-            "verbosity": -1,
-            "bagging_freq": 1,
-            "random_state":2024,
-            "device_type":'gpu',
-            "force_col_wise":True,
-        }
+        
         self.metrics_list = metrics
         self.directions = directions
+        self.model_init(model_name)
+
+    def model_init(self, model_name):
+        self.model_name = model_name
+        match model_name:
+            case 'lgbm':
+                self.base_params = {
+                    "objective": "regression",
+                    "metrics": self.metrics_list,
+                    "verbosity": -1,
+                    "bagging_freq": 1,
+                    "random_state":2024,
+                    "device_type":'gpu',
+                    "force_col_wise":True,
+                }
+                self.model = lgb.LGBMRegressor()
+            case 'catboost':
+                self.base_params = {
+                    'custom_metric':self.metrics_list,
+                    'random_state':2024,
+                    'task_type':'GPU',
+                    'devices':'0-3',
+                }
+                self.model = catboost.CatBoostRegressor()
+
 
     def train_dataloader(self):
         return self.X_train, self.y_train
@@ -46,21 +65,31 @@ class Train:
         return r2, mae, mse, rmse
 
     def objective(self, trial):
-        params = {
-            **self.base_params,
-            "n_estimators": trial.suggest_int("n_estimators", 100, 10**2),
-            "learning_rate": trial.suggest_float("learning_rate", 1e-2, 0.2, log=True),
-            "num_leaves": trial.suggest_int("num_leaves", 2, 2**10),
-            "subsample": trial.suggest_float("subsample", 0.05, 1.0),
-            "colsample_bytree": trial.suggest_float("colsample_bytree", 0.05, 1.0),
-            "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 3, 100),
-        }
-
-        model = lgb.LGBMRegressor(**params)
-        model.fit(*self.train_dataloader())
-        predictions = model.predict(self.X_val)
-
-        return self.metrics(predictions)
+        params = dict()
+        match self.model_name:
+            case 'lgbm':
+                params = {
+                    **self.base_params,
+                    "n_estimators": trial.suggest_int("n_estimators", 100, 10**2),
+                    "learning_rate": trial.suggest_float("learning_rate", 1e-2, 0.2, log=True),
+                    "num_leaves": trial.suggest_int("num_leaves", 2, 2**10),
+                    "subsample": trial.suggest_float("subsample", 0.05, 1.0),
+                    "colsample_bytree": trial.suggest_float("colsample_bytree", 0.05, 1.0),
+                    "min_data_in_leaf": trial.suggest_int("min_data_in_leaf", 3, 100),
+                }
+            case 'catboost':
+                params= {
+                    **self.base_params,
+                    'iterations': trial.suggest_int("n_estimators", 50, 200),
+                    'learning_rate': trial.suggest_float("learning_rate", 1e-3, 0.1, log=True),
+                    'depth': trial.suggest_int("min_data_in_leaf", 2, 30),
+                    'l2_leaf_reg': trial.suggest_float("learning_rate", 0.1, 5),
+                } 
+        self.model_init(self.model_name)
+        self.model.set_params(**params)
+        self.model.fit(*self.train_dataloader())
+            
+        return self.metrics(self.model.predict(self.X_val))
         
     def optimize(self, study_name, n_trials=100):
         study = optuna.create_study(
@@ -74,9 +103,16 @@ class Train:
         self.best_trials = study.best_trials
     
     def train(self, **params):
-        self.lgbm = lgb.LGBMRegressor(**params)
-        self.lgbm.fit(*self.train_dataloader())
-        self.pred = self.lgbm.predict(self.X_val)
+        self.model_init(self.model_name)
+        self.model.set_params(**params)
+        self.model.fit(*self.train_dataloader())
+
+        # for catboost
+        if self.model_name == 'catboost':
+            test_pool = catboost.Pool(self.X_val, label=self.y_val)
+            self.pred = self.model.predict(test_pool)
+            return catboost.eval_metrics(test_pool, metrics=self.metrics, plot=True)
+        self.pred = self.model.predict(self.X_val)
         return self.metrics(self.pred)
     
     def try_all_trials(self, n_estimators=10000):
@@ -88,10 +124,14 @@ class Train:
             self.importances()
 
     def importances(self):
-        lgb.plot_importance(self.lgbm, 
-                            importance_type="gain", 
-                            figsize=(10,10), title="LightGBM Feature Importance (Gain)")
-        plt.show()
+        if self.model_name == 'lgbm':
+            lgb.plot_importance(self.model, 
+                                importance_type="gain", 
+                                figsize=(10,10), title="LightGBM Feature Importance (Gain)")
+            return plt.show()
+        
+        catboost.get_feature_importance(type='PredictionValuesChange')
+        return plt.show()
 
     def plot_preds(self):
         px.line(x=np.arange(len(self.y_val)), y=[self.y_val, self.pred], log_y=True, width=1900, height=500).show()

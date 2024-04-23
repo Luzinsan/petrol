@@ -13,8 +13,8 @@ COLORMAP = [[0.0, '#3f7f93'],
             [0.9, '#e15e68'],
             [1.0, '#da3b46']]
 
-# PLOT_THEME='plotly_dark'
-PLOT_THEME='none'
+PLOT_THEME='plotly_dark'
+# PLOT_THEME='none'
 VERBOSE=False
 SHOW_PLOTS=False
 APPEND_TO_EXISTS=False
@@ -22,7 +22,6 @@ DROP_OLD_COLUMNS=True
 TARGET='Добыча воды за 2 ч ,м3, лаг -1'
 TIME_AXIS='YY-MM-DD HH:00'
 INSERT_NEARBY=True
-FIGSIZE=(1000, 1800) # height=FIGSIZE[0], width=FIGSIZE[1]
 LOG=(False, False) # log_x=LOG[0], log_y=LOG[1]
 TEXTFONT_SIZE=10
 FILEPATH=None

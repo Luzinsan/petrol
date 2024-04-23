@@ -11,7 +11,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, root_mean_squared_error
 import matplotlib.pyplot as plt
 import plotly.express as px
+import plotly.graph_objects as go
 import numpy as np
+import pandas as pd
 import pickle
 
 import mlflow
@@ -25,6 +27,7 @@ class Train:
                  directions=['maximize', 'minimize', 'minimize', 'minimize'],
                  predict=False, train=False,
                  test_size=0.2):
+        self.dataset = df
         if predict:
             self.X_val, self.y_val = df.data, df.target
         elif train:
@@ -101,11 +104,7 @@ class Train:
                     'depth': trial.suggest_int("min_data_in_leaf", 2, 30),
                     'l2_leaf_reg': trial.suggest_float("learning_rate", 0.1, 5),
                 } 
-        self.model_init(self.model_name)
-        self.model.set_params(**params)
-        self.model.fit(*self.train_dataloader())
-            
-        return self.metrics(self.model.predict(self.X_val))
+        return self.train(False, **params)  
         
     def optimize(self, study_name, n_trials=100):
         
@@ -120,26 +119,27 @@ class Train:
         study.optimize(self.objective, n_trials=n_trials)
         self.best_trials = study.best_trials
     
-    def predict(self):
+    def predict(self, track=False):
         if self.model_name == 'catboost':
             test_pool = catboost.Pool(self.X_val, label=self.y_val)
             self.pred = self.model.predict(test_pool)
         self.pred = self.model.predict(self.X_val)
-        # Infer the model signature
-        signature = infer_signature(self.X_train, self.pred)
+        if track:
+            # Infer the model signature
+            signature = infer_signature(self.X_train, self.pred)
 
-        # Log the model
-        model_info = mlflow.lightgbm.log_model(
-            
-            lgb_model=self.model,
-            artifact_path=self.train_name,
-            signature=signature,
-            input_example=self.X_train,
-            registered_model_name=self.train_name,
-        )
+            # Log the model
+            model_info = mlflow.lightgbm.log_model(
+                
+                lgb_model=self.model,
+                artifact_path=self.train_name,
+                signature=signature,
+                input_example=self.X_train,
+                registered_model_name=self.train_name,
+            )
         
 
-    def train(self, **params):
+    def train(self, track=False, **params):
         
         self.model_init(self.model_name)
         self.model.set_params(**params)
@@ -150,69 +150,75 @@ class Train:
             test_pool = catboost.Pool(self.X_val, label=self.y_val)
             self.pred = self.model.predict(test_pool)
             return catboost.eval_metrics(test_pool, metrics=self.metrics, plot=True)
-        self.predict()
-        return self.metrics(self.pred, True) 
+        self.predict(track)
+        return self.metrics(self.pred, track) 
     
     def try_all_trials(self, n_estimators=10000):
         mlflow.end_run()
         mlflow.set_experiment(self.train_name)
         with mlflow.start_run(run_name=self.train_name):
             for trial in self.best_trials:
-                trial.params.update(self.base_params)
-                trial.params['n_estimators'] = n_estimators
-                mlflow.set_experiment(self.train_name)
-                with mlflow.start_run(nested=True):
-                    mlflow.log_params(trial.params)
-                    print(trial.params)
-                    print("R2 = {}; MAE = {}; MSE = {}; RMSE = {}".format(*self.train(**trial.params)))
-                    self.importances()
-                    self.plot_preds()
-            
+                self.train_with_trial(trial)
 
-    def importances(self):
-        # run_id = mlflow.active_run().info.run_id
-        # filepath = join('mlruns', 
-        #                 mlflow.get_parent_run(run_id).info.run_uuid(), 
-        #                 run_id,
-        #                 'feature_importances.png')
+    def train_with_trial(self, trial, n_estimators=1000):
+        trial.params.update(self.base_params)
+        trial.params['n_estimators'] = n_estimators
+        mlflow.set_experiment(self.train_name)
+        with mlflow.start_run(nested=True):
+            run_path = join(mlflow.active_run().info.artifact_uri, self.train_name)
+            mlflow.log_params(trial.params)
+            print(trial.params)
+            print("R2 = {}; MAE = {}; MSE = {}; RMSE = {}".format(*self.train(True, **trial.params)))
+            self.importances(run_path)
+            self.plot_preds(run_path)
+            self.dataset.corr_matrix(self.dataset.cols[1:], self.dataset.target.name, 
+                                     title=f'Корреляционная матрица с таргетом {self.dataset.target.name}',
+                                     filepath=join(run_path, 'corr_matrix.html'),
+                                     mlflow_track=True)
+
+    def importances(self, run_path):
+        filepath = join(run_path, 'feature_importances.html')
         if self.model_name == 'lgbm':
-            lgb.plot_importance(self.model, 
-                                importance_type="gain", 
-                                figsize=(10,10), title="LightGBM Feature Importance (Gain)")
+            self.model.importance_type = "gain"
+            importances = pd.DataFrame({"feature_names": self.X_train.columns, 
+                                        "values": self.model.feature_importances_})\
+                                            .sort_values('values', ascending=False).iloc[:10,:]
+            fig = px.pie(importances, names="feature_names", values="values")
+            fig.update_traces(textposition='inside', textinfo='percent+label')
         else:
             catboost.get_feature_importance(type='PredictionValuesChange')
         
-        # plt.savefig(filepath)
-        # mlflow.log_artifact(filepath)
-        return plt.show()
+        Dataset.plot_template(fig, filepath, 
+                              title="LightGBM Feature Importance (Gain)", 
+                              mlflow_track=True, height=500, width=1000)
 
-    def plot_preds(self):
-        # run_id = mlflow.active_run().info.run_id
-        # filepath = join('mlruns', 
-        #                 mlflow.get_parent_run(run_id).info.run_uuid(), 
-        #                 run_id,
-        #                 'True_predicted_time_series.png')
-        fig = px.line(x=np.arange(len(self.y_val)), y=[self.y_val, self.pred], 
-                      labels={'wide_variable_0': 'Validate', 'wide_variable_1':'Predicted'}, 
-                      log_y=True, width=1900, height=500).show()
-        # fig.write_image(filepath)
-        # mlflow.log_artifact(filepath)
-
-        # filepath = join('mlruns', 
-        #                 mlflow.get_parent_run(run_id).info.run_uuid(), 
-        #                 run_id,
-        #                 'True_Predicted.png')
         
-        plt.rc('font', size=11)
-        plt.figure(figsize=(5, 4))
-        plt.scatter(self.y_val, self.pred, label="LGBM")
 
-        plt.plot(self.y_val, self.y_val, label="True values", color="red")
-        plt.legend()
+    def plot_preds(self, run_path):
+        QQ = pd.DataFrame({"Validate": self.y_val, "Predicted": self.pred})
 
-        plt.xlabel("True values")
-        plt.ylabel("Predicted values")
+        filepath = join(run_path, 'True_predicted_time_series.html')
+        fig = px.line(QQ, x=np.arange(len(self.y_val)), y=['Validate', 'Predicted'], log_y=True)
+        Dataset.plot_template(fig, filepath, 
+                              title=f"True and predicted values of {self.y_val.name}", 
+                              mlflow_track=True, height=500, width=1000)
 
-        # plt.savefig(filepath)
-        # mlflow.log_artifact(filepath)
-        return plt.show()
+        filepath = join(run_path, 'QQ_plot.html')
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=QQ['Validate'],
+                y=QQ['Predicted'],
+                mode='markers',
+                marker=dict(size=10, color='blue',),
+                name='Predicted'
+            ))
+        fig.add_trace(go.Scatter(
+                x=QQ['Validate'],
+                y=QQ['Validate'],
+                name='Validate'
+            ))
+        Dataset.plot_template(fig, filepath, 
+                              title=f"QQ Plot of {self.y_val.name}", 
+                              mlflow_track=True, height=400, width=1000)
+    

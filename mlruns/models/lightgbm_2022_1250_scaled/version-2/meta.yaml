@@ -1,14 +1,3 @@
-aliases: []
-creation_timestamp: 1713864336814
-current_stage: None
-description: null
-last_updated_timestamp: 1713864336814
-name: lightgbm_2022_1250_scaled
-run_id: c95d894dbd8445f1932bab13fbd9c75d
-run_link: null
-source: /home/prog3/notebooks/petrol/mlruns/566029861937244614/c95d894dbd8445f1932bab13fbd9c75d/artifacts/lightgbm_2022_1250_scaled
-status: READY
-status_message: null
-storage_location: /home/prog3/notebooks/petrol/mlruns/566029861937244614/c95d894dbd8445f1932bab13fbd9c75d/artifacts/lightgbm_2022_1250_scaled
-user_id: null
-version: 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:41348c8daa6767c27b60c5c30538f20a6e3b5c428506ec0e1eff8e7a27e5b2f8
+size 544

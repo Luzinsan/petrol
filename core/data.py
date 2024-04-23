@@ -10,6 +10,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from ydata_profiling import ProfileReport
+import mlflow
 
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from phik.report import plot_correlation_matrix
@@ -276,9 +277,11 @@ class Dataset:
 
     #endregion
 
-    #region plots  
-    def __plot_template(self, fig: go.Figure, title='', filepath=FILEPATH, show=SHOW_PLOTS, figsize=FIGSIZE, append=APPEND_TO_EXISTS):
-        fig.update_layout(template=PLOT_THEME, height=figsize[0], width=figsize[1], title=title)
+    #region plots 
+    @staticmethod 
+    def plot_template(fig: go.Figure, filepath=FILEPATH, show=SHOW_PLOTS, append=APPEND_TO_EXISTS, 
+                      verbose=VERBOSE, mlflow_track=False, **layout_params):
+        fig.update_layout(template=PLOT_THEME, **layout_params)
         if filepath:
             filepath = filepath if filepath.endswith('.html') else f'{filepath}.html'
             if not os.path.exists(filepath) or not append:
@@ -286,9 +289,11 @@ class Dataset:
             else:
                 with open(filepath, 'a') as f:
                     f.write(fig.to_html(full_html=False, include_plotlyjs=False))
-            print("Файл сгенерирован: ", filepath) if self.verbose else None
+            print("Файл сгенерирован: ", filepath) if verbose else None
         if show:
             fig.show()
+        if mlflow_track:
+            mlflow.log_artifact(filepath)
 
     def report(self, columns=None, filepath=FILEPATH, show=SHOW_PLOTS):
         columns = self.columns(columns)
@@ -300,7 +305,7 @@ class Dataset:
             return report    
 
     def time_series(self, columns=None, appendix_cols=None, log=LOG, time_axis=TIME_AXIS,
-                    **kwargs): # filepath, show, figsize, append
+                    **kwargs): # filepath, show, height, width, append, title and other (layout_params)
         columns = self.columns(columns)
         if appendix_cols:
             columns += appendix_cols
@@ -311,7 +316,7 @@ class Dataset:
         try:
             fig = px.line(self.df, x=time_axis, y=columns,
                           log_x=log[0], log_y=log[1])
-            self.__plot_template(fig, **kwargs)
+            self.plot_template(fig, **kwargs)
         except BaseException as err:
             print(err)
 
@@ -320,10 +325,10 @@ class Dataset:
         columns = self.columns(columns)
         fig = px.scatter_matrix(self.df[columns])
         fig.update_traces(diagonal_visible=False, showlowerhalf=False)
-        self.__plot_template(fig, **kwargs)
+        self.plot_template(fig, **kwargs)
 
     def difference_with_smoothed(self, column, time_axis=TIME_AXIS, method='rolling',mode='markers',
-                                 **kwargs): # filepath, show, figsize, append
+                                 **kwargs): # filepath, show, height, width, append, title and other (layout_params)
         fig = go.Figure()
         fig.add_trace(go.Scatter(
             x=self.df[time_axis],
@@ -363,12 +368,12 @@ class Dataset:
                 name='Smoothed scatter'
             ))
 
-        self.__plot_template(fig, **kwargs)
+        self.plot_template(fig, **kwargs)
 
 
-    def corr_matrix(self, columns=None, target=TARGET, title='',
+    def corr_matrix(self, columns=None, target=TARGET, 
                     method='pearson', textfont_size=TEXTFONT_SIZE, 
-                    **kwargs): # filepath, show, figsize, append
+                    **kwargs): # filepath, show, height, width, append, title and other (layout_params)
         columns = self.columns(columns)
         if target not in columns:
             columns.append(target)
@@ -383,9 +388,9 @@ class Dataset:
         else:
             corr = self.df[columns].corr(method) 
        
-        fig = px.imshow(corr, text_auto=True,  color_continuous_scale=COLORMAP, title=f'{title}: {target if target else method}')
+        fig = px.imshow(corr, text_auto=True,  color_continuous_scale=COLORMAP)
         fig.update_traces(textfont_size=textfont_size,  texttemplate = "%{z:.2f}")
-        self.__plot_template(fig, **kwargs)
+        self.plot_template(fig, **kwargs)
 
     #endregion
 

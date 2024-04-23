@@ -1,0 +1,6 @@
+artifact_location: /home/prog3/notebooks/petrol/mlruns/566029861937244614
+creation_time: 1713864325952
+experiment_id: '566029861937244614'
+last_update_time: 1713864325952
+lifecycle_stage: active
+name: lightgbm_2022_1250_scaled

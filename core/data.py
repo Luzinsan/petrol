@@ -202,6 +202,23 @@ class Dataset:
         if drop:
             self.drop(columns)
 
+
+    def recovery_outliers(self, columns, save_interval, insert=True):
+    
+        columns = self.columns(columns)
+        print("Восстановление выбросов...") if self.verbose else None
+        for idx, col in enumerate(columns):
+            mask = (
+                    (self.df[col].between(*save_interval) )
+                )
+            
+            data = pd.Series(np.where(mask, self.df[col], np.nan))
+            print("Выбросы: ", self.df.loc[~mask, col]) if self.verbose else None
+            data = data.ffill()
+            self.__insert_or_replace(col, insert, 'outlier', data)
+            
+
+
     def smooth(self, columns, frac=0.001, window=5, polyorder=3, insert=INSERT_NEARBY, method='lowess'):
         """
             Сглаживание значений в указанных признаках
@@ -242,7 +259,7 @@ class Dataset:
             return s.where(m, avg), max, min
         return s.where(m, avg)
 
-    def scale(self, columns, method='standard'):
+    def scale(self, columns, method='standard', insert=False):
         columns = self.columns(columns)
         print("Выполняется масштабирование значений признаков: ", columns) if self.verbose else None
         match method:
@@ -252,7 +269,7 @@ class Dataset:
                 scaled = preprocessing.MinMaxScaler().fit_transform(self.df[columns])
             case _:
                 raise ValueError("Указан неподдерживаемый метод")
-        self.__insert_or_replace(columns, False, method, scaled)
+        self.__insert_or_replace(columns, insert, method, scaled)
             
 
         

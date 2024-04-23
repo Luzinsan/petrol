@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1713864332290
+current_stage: None
+description: null
+last_updated_timestamp: 1713864332290
+name: lightgbm_2022_1250_scaled
+run_id: a189688b70504ccaa319a7230a019755
+run_link: null
+source: /home/prog3/notebooks/petrol/mlruns/566029861937244614/a189688b70504ccaa319a7230a019755/artifacts/lightgbm_2022_1250_scaled
+status: READY
+status_message: null
+storage_location: /home/prog3/notebooks/petrol/mlruns/566029861937244614/a189688b70504ccaa319a7230a019755/artifacts/lightgbm_2022_1250_scaled
+user_id: null
+version: 1

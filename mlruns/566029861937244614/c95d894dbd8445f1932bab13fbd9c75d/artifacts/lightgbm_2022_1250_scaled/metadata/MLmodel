@@ -1,0 +1,47 @@
+artifact_path: lightgbm_2022_1250_scaled
+flavors:
+  lightgbm:
+    code: null
+    data: model.pkl
+    lgb_version: 4.3.0
+    model_class: lightgbm.sklearn.LGBMRegressor
+  python_function:
+    data: model.pkl
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.lightgbm
+    python_version: 3.10.12
+mlflow_version: 2.12.1
+model_size_bytes: 2179967
+model_uuid: 157009e41fc24c129ba22e0afff0bbc7
+run_id: c95d894dbd8445f1932bab13fbd9c75d
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "BlockP", "required": true}, {"type": "double",
+    "name": "BlockT", "required": true}, {"type": "double", "name": "C1P", "required":
+    true}, {"type": "double", "name": "C1T", "required": true}, {"type": "double",
+    "name": "C1L", "required": true}, {"type": "double", "name": "C2P", "required":
+    true}, {"type": "double", "name": "C2T", "required": true}, {"type": "double",
+    "name": "C2interfacial_L", "required": true}, {"type": "double", "name": "\u04212petrol_L",
+    "required": true}, {"type": "double", "name": "OH1T", "required": true}, {"type":
+    "double", "name": "OH1interfacial_L", "required": true}, {"type": "double", "name":
+    "OH1P", "required": true}, {"type": "double", "name": "C3T", "required": true},
+    {"type": "double", "name": "C3L", "required": true}, {"type": "double", "name":
+    "P1Tinput", "required": true}, {"type": "double", "name": "P1Toutput", "required":
+    true}, {"type": "double", "name": "P1Pinput", "required": true}, {"type": "double",
+    "name": "P1Poutput", "required": true}, {"type": "double", "name": "P1\u0422coolant",
+    "required": true}, {"type": "double", "name": "P1Tgases", "required": true}, {"type":
+    "double", "name": "P1\u0420burner", "required": true}, {"type": "double", "name":
+    "P2Tinput", "required": true}, {"type": "double", "name": "P2Toutput", "required":
+    true}, {"type": "double", "name": "P2Pinput", "required": true}, {"type": "double",
+    "name": "P2Poutput", "required": true}, {"type": "double", "name": "P2Tcoolant",
+    "required": true}, {"type": "double", "name": "P2Tgases", "required": true}, {"type":
+    "double", "name": "P2Pburner", "required": true}, {"type": "double", "name": "Water",
+    "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2024-04-23 09:25:34.612941'

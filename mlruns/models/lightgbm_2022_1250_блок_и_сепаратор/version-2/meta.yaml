@@ -1,0 +1,14 @@
+aliases: []
+creation_timestamp: 1713865038108
+current_stage: None
+description: null
+last_updated_timestamp: 1713865038108
+name: lightgbm_2022_1250_блок_и_сепаратор
+run_id: 83be0bb10785464f9cb313d1711e2f86
+run_link: null
+source: /home/prog3/notebooks/petrol/mlruns/687711113217647258/83be0bb10785464f9cb313d1711e2f86/artifacts/lightgbm_2022_1250_блок_и_сепаратор
+status: READY
+status_message: null
+storage_location: /home/prog3/notebooks/petrol/mlruns/687711113217647258/83be0bb10785464f9cb313d1711e2f86/artifacts/lightgbm_2022_1250_блок_и_сепаратор
+user_id: null
+version: 2

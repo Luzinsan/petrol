@@ -1,0 +1,41 @@
+artifact_path: "lightgbm_2022_1250_scaled_\u0434\u043E_\u043F\u0435\u0447\u0435\u043A\
+  _\u0432\u043A\u043B"
+flavors:
+  lightgbm:
+    code: null
+    data: model.pkl
+    lgb_version: 4.3.0
+    model_class: lightgbm.sklearn.LGBMRegressor
+  python_function:
+    data: model.pkl
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.lightgbm
+    python_version: 3.10.12
+mlflow_version: 2.12.1
+model_size_bytes: 1007118
+model_uuid: f09e0973bb8d4cf6b098ce2745fda212
+run_id: 1d4ee2ab21ce4bf29f5b43c329c15ad6
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "BlockP", "required": true}, {"type": "double",
+    "name": "BlockT", "required": true}, {"type": "double", "name": "C1P", "required":
+    true}, {"type": "double", "name": "C1T", "required": true}, {"type": "double",
+    "name": "C1L", "required": true}, {"type": "double", "name": "P1Tinput", "required":
+    true}, {"type": "double", "name": "P1Toutput", "required": true}, {"type": "double",
+    "name": "P1Pinput", "required": true}, {"type": "double", "name": "P1Poutput",
+    "required": true}, {"type": "double", "name": "P1\u0422coolant", "required": true},
+    {"type": "double", "name": "P1Tgases", "required": true}, {"type": "double", "name":
+    "P1\u0420burner", "required": true}, {"type": "double", "name": "P2Tinput", "required":
+    true}, {"type": "double", "name": "P2Toutput", "required": true}, {"type": "double",
+    "name": "P2Pinput", "required": true}, {"type": "double", "name": "P2Poutput",
+    "required": true}, {"type": "double", "name": "P2Tcoolant", "required": true},
+    {"type": "double", "name": "P2Tgases", "required": true}, {"type": "double", "name":
+    "P2Pburner", "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+utc_time_created: '2024-04-23 09:32:37.490139'

@@ -1,0 +1,15 @@
+artifact_uri: /home/prog3/notebooks/petrol/mlruns/985116522134609715/4a1ad27ec86e4e298a03f4c840e96194/artifacts
+end_time: 1713864760082
+entry_point_name: ''
+experiment_id: '985116522134609715'
+lifecycle_stage: active
+run_id: 4a1ad27ec86e4e298a03f4c840e96194
+run_name: lightgbm_2022_1250_scaled_до_печек_вкл
+run_uuid: 4a1ad27ec86e4e298a03f4c840e96194
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1713864756843
+status: 3
+tags: []
+user_id: prog3

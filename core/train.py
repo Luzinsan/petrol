@@ -58,7 +58,7 @@ class Train:
                 self.base_params = {
                     'custom_metric':self.metrics_list,
                     'random_state':2024,
-                    'task_type':'GPU',
+                    'task_type':'CPU',
                     'devices':'0-3',
                 }
                 self.model = catboost.CatBoostRegressor()
@@ -73,15 +73,23 @@ class Train:
     def test_dataloader(self):
         return self.X_val
 
-    def metrics(self, y_hat, track=False): # hardcode
-        r2 = r2_score(self.y_val, y_hat)
-        mae = mean_absolute_error(self.y_val, y_hat)
-        mse = mean_squared_error(self.y_val, y_hat)
-        rmse = root_mean_squared_error(self.y_val, y_hat)
+    def metrics(self, y_hat, track=False):
+        metric_values = dict()
+        for metric in self.metrics_list:
+            match metric:
+                case 'r2'|'R2':
+                    value = r2_score(self.y_val, y_hat) 
+                case 'mae'|'MAE':
+                    value = mean_absolute_error(self.y_val, y_hat)
+                case 'mse'|'MSE':
+                    value =  mean_squared_error(self.y_val, y_hat)
+                case 'rmse'|'RMSE':
+                    value = root_mean_squared_error(self.y_val, y_hat)
+            metric_values[metric] = value
         # Log the loss metric
         if track:
-            mlflow.log_metrics(dict(r2=r2, mae=mae, mse=mse, rmse=rmse))
-        return r2, mae, mse, rmse
+            mlflow.log_metrics(metric_values)
+        return list(metric_values.values())
 
     def objective(self, trial):
         params = dict()
@@ -99,10 +107,10 @@ class Train:
             case 'catboost':
                 params= {
                     **self.base_params,
-                    'iterations': trial.suggest_int("n_estimators", 50, 200),
+                    'n_estimators': trial.suggest_int("n_estimators", 50, 200),
                     'learning_rate': trial.suggest_float("learning_rate", 1e-3, 0.1, log=True),
-                    'depth': trial.suggest_int("min_data_in_leaf", 2, 30),
-                    'l2_leaf_reg': trial.suggest_float("learning_rate", 0.1, 5),
+                    'depth': trial.suggest_int("depth", 2, 16),
+                    'l2_leaf_reg': trial.suggest_float("l2_leaf_reg", 0.1, 5),
                 } 
         return self.train(False, **params)  
         
@@ -120,36 +128,37 @@ class Train:
         self.best_trials = study.best_trials
     
     def predict(self, track=False):
-        if self.model_name == 'catboost':
-            test_pool = catboost.Pool(self.X_val, label=self.y_val)
-            self.pred = self.model.predict(test_pool)
         self.pred = self.model.predict(self.X_val)
         if track:
-            # Infer the model signature
-            signature = infer_signature(self.X_train, self.pred)
-
+            logger_dict = dict(
+                            artifact_path=self.train_name,
+                            signature=infer_signature(self.X_train, self.pred), # Infer the model signature
+                            input_example=self.X_train,
+                            registered_model_name=self.train_name,
+                            )
             # Log the model
-            model_info = mlflow.lightgbm.log_model(
-                
+            if self.model_name == 'lgbm':
+                model_info = mlflow.lightgbm.log_model(
                 lgb_model=self.model,
-                artifact_path=self.train_name,
-                signature=signature,
-                input_example=self.X_train,
-                registered_model_name=self.train_name,
+                **logger_dict,
             )
+            elif self.model_name == 'catboost':
+                model_info = mlflow.catboost.log_model(
+                cb_model=self.model,
+                **logger_dict,
+            )
+            
+            
         
 
     def train(self, track=False, **params):
         
         self.model_init(self.model_name)
         self.model.set_params(**params)
-        self.model.fit(*self.train_dataloader())
-
-        # for catboost
-        if self.model_name == 'catboost':
-            test_pool = catboost.Pool(self.X_val, label=self.y_val)
-            self.pred = self.model.predict(test_pool)
-            return catboost.eval_metrics(test_pool, metrics=self.metrics, plot=True)
+        if self.model_name=='catboost':
+            self.model.fit(*self.train_dataloader(), verbose=False)     
+        else:
+            self.model.fit(*self.train_dataloader())        
         self.predict(track)
         return self.metrics(self.pred, track) 
     
@@ -160,15 +169,15 @@ class Train:
             for trial in self.best_trials:
                 self.train_with_trial(trial)
 
-    def train_with_trial(self, trial, n_estimators=1000):
+    def train_with_trial(self, trial, n_estimators=1000, track=True):
         trial.params.update(self.base_params)
         trial.params['n_estimators'] = n_estimators
         mlflow.set_experiment(self.train_name)
         with mlflow.start_run(nested=True):
-            run_path = join(mlflow.active_run().info.artifact_uri, self.train_name)
+            run_path = join(mlflow.active_run().info.artifact_uri)
             mlflow.log_params(trial.params)
             print(trial.params)
-            print("R2 = {}; MAE = {}; MSE = {}; RMSE = {}".format(*self.train(True, **trial.params)))
+            print({ name:value for name, value in zip(self.metrics_list, self.train(track, **trial.params))})
             self.importances(run_path)
             self.plot_preds(run_path)
             self.dataset.corr_matrix(self.dataset.cols[1:], self.dataset.target.name, 
@@ -177,19 +186,22 @@ class Train:
                                      mlflow_track=True)
 
     def importances(self, run_path):
-        filepath = join(run_path, 'feature_importances.html')
-        if self.model_name == 'lgbm':
-            self.model.importance_type = "gain"
-            importances = pd.DataFrame({"feature_names": self.X_train.columns, 
-                                        "values": self.model.feature_importances_})\
-                                            .sort_values('values', ascending=False).iloc[:10,:]
-            fig = px.pie(importances, names="feature_names", values="values")
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-        else:
-            catboost.get_feature_importance(type='PredictionValuesChange')
         
+        if self.model_name == 'lgbm':
+            importances = self.model.feature_importances_
+        elif self.model_name == 'catboost':
+            importances = self.model.get_feature_importance()
+        
+        self.model.importance_type = "gain"
+        importances = pd.DataFrame({"feature_names": self.X_train.columns, 
+                                    "values": importances})\
+                                        .sort_values('values', ascending=False).iloc[:10,:]
+        fig = px.pie(importances, names="feature_names", values="values")
+        fig.update_traces(textposition='inside', textinfo='percent+label')
+
+        filepath = join(run_path, 'feature_importances.html')
         Dataset.plot_template(fig, filepath, 
-                              title="LightGBM Feature Importance (Gain)", 
+                              title=f"{self.model_name} Feature Importance (Gain)", 
                               mlflow_track=True, height=500, width=1000)
 
         

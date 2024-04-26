@@ -747,14 +747,6 @@ ssh = ["paramiko (>=2.4.3)"]
 websockets = ["websocket-client (>=1.3.0)"]
 
 [[package]]
-name = "dotenv"
-version = "0.0.5"
-description = "Handle .env files"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "dpath"
 version = "2.1.6"
 description = "Filesystem-like pathing and searching for dictionaries"
@@ -1883,7 +1875,7 @@ scipy = "*"
 
 [package.extras]
 arrow = ["cffi (>=1.15.1)", "pyarrow (>=6.0.1)"]
-dask = ["dask[distributed,array,dataframe] (>=2.0.0)", "pandas (>=0.24.0)"]
+dask = ["dask[dataframe,distributed,array] (>=2.0.0)", "pandas (>=0.24.0)"]
 pandas = ["pandas (>=0.24.0)"]
 scikit-learn = ["scikit-learn (!=0.22.0)"]
 
@@ -3748,7 +3740,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-ena
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "4b25c1802cf5f58b75147075ef319c8dd6a80886e654a953205d5b0e767be3f6"
+content-hash = "31061e1ac862e1bbf184507d5001a1a3c29c926093f78aae32f1bb63305322e9"
 
 [metadata.files]
 aiohttp = []
@@ -3808,7 +3800,6 @@ dill = []
 diskcache = []
 distro = []
 docker = []
-dotenv = []
 dpath = []
 dulwich = []
 dvc = []

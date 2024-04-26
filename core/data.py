@@ -17,11 +17,8 @@ from phik.report import plot_correlation_matrix
 from scipy import signal
 
 from sklearn import preprocessing
-
 from core.configs import *
 
-# from IPython import get_ipython
-# ipython = get_ipython()
 
 # slice функция по индексу для словарей
 slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), start, stop, step))
@@ -30,13 +27,15 @@ slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), s
 class Dataset:
 
     #region base
-    def __init__(self, df: pd.DataFrame=None, verbose=VERBOSE, cudf=False):
+    def __init__(self, df: pd.DataFrame=None, name='dataset', verbose=VERBOSE, cudf=False):
         self.verbose = verbose
+        self.name = name
         if isinstance(df, pd.DataFrame):
             self.df = df.copy()
             self.original = df.copy()
-        # if cudf:
-        #     ipython.magic("load_ext cudf.pandas")
+
+    def __getitem__(self, index):
+        return self.data.loc[index]
         
 
     def load(self, path, dropna=True, parse_dates=None):
@@ -68,7 +67,7 @@ class Dataset:
     
     @property
     def data(self):
-        return self.df.iloc[:,1:-1]
+        return self.df.iloc[:,:-1]
 
     
     @property

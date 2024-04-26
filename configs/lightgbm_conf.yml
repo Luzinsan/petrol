@@ -1,0 +1,48 @@
+base:
+    model: lightgbm
+    objective: regression
+    metrics: [r2, mae, mse, rmse]
+    verbosity: -1
+    bagging_freq: 1
+    device_type: gpu
+    force_col_wise: true
+
+    test_size: 0.000001
+    validation_size: 0.2
+
+
+optimize:
+    n_trials: 100
+    storage: "sqlite:///db.sqlite3"
+    study_name: lightgbm_study_try_old
+    directions: [maximize, minimize, minimize, minimize]
+    load_if_exists: true
+
+    int: 
+        n_estimators: 
+            range: [100, 200]
+        num_leaves: 
+            range: [2, 1024]
+        min_data_in_leaf: 
+            range: [3, 100]
+    float: 
+        learning_rate: 
+            range: [0.001, 0.2]
+            args: {"log":true}
+        subsample: 
+            range: [0.05, 1.0]
+        colsample_bytree: 
+            range: [0.05, 1.0]
+    
+
+train:
+    experiment_name: LightGBM_try_old
+    train_name: LightGBM_try_old
+    target_score: r2
+    n_estimators: 1000
+
+
+predict:
+    pass
+
+

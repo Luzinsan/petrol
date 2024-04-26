@@ -168,12 +168,13 @@ class Train:
 
     def importances(self, run_path):
         
+        self.model.importance_type = "gain"
         if self.configs['base']['model'] == 'lightgbm':
             importances = self.model.feature_importances_
         elif self.configs['base']['model'] == 'catboost':
             importances = self.model.get_feature_importance()
         
-        self.model.importance_type = "gain"
+        
         importances = pd.DataFrame({"feature_names": self.df.data.columns, 
                                     "values": importances})#\
                                         #.iloc[:,:]

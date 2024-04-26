@@ -1,5 +1,3 @@
-
 __pycache__/
-data/raw/2024/*
-
 .vscode/settings.json
+*.csv

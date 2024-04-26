@@ -26,6 +26,7 @@ optuna-dashboard = "^0.15.1"
 statsmodels = "^0.14.2"
 phik = "^0.12.4"
 mlflow = "^2.12.1"
+dvc = "^3.50.0"
 
 
 [build-system]

@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
 from functools import reduce
+from pathlib import Path
 
 
 import mlflow
@@ -25,7 +26,8 @@ from yaml import load, Loader
 class Train:
 
     def __init__(self, df: Dataset,
-                 config_file:str|Path):
+                 config_file:str|Path,
+                 mode='train'):
         
         with open(config_file, "r") as conf:
             self.configs = load(conf, Loader=Loader)
@@ -33,16 +35,25 @@ class Train:
         np.random.seed(2024)
         self.df: Dataset = df
         
-        self.X_train_index, self.X_val_index, self.y_train_index, self.y_val_index = \
-                            train_test_split(self.df.data.index, self.df.target.index,
-                                            test_size=self.configs['base']["validation_size"])
-
-        self.X_train_index, self.X_test_index, self.y_train_index, self.y_test_index = \
-                            train_test_split(self.X_train_index, self.y_train_index,
+        if mode=='train':
+            self.X_train_index, self.X_val_index, self.y_train_index, self.y_val_index = \
+                                train_test_split(self.df.data.index, self.df.target.index,
+                                                test_size=self.configs['base']["validation_size"])
+            print(f'train shape: {self.X_train_index.shape}, validate shape: {self.X_val_index.shape}')
+        elif mode=='test':
+            self.X_val_index, self.y_val_index = self.df.data.index, self.df.target.index
+            print(f'test shape: {self.X_val_index.shape}')
+        else:
+            self.X_train_index, self.X_val_index, self.y_train_index, self.y_val_index = \
+                                train_test_split(self.df.data.index, self.df.target.index,
+                                                test_size=self.configs['base']["validation_size"])
+            self.X_train_index, self.X_test_index, self.y_train_index, self.y_test_index = \
+                                train_test_split(self.X_train_index, self.y_train_index,
                                             test_size=self.configs['base']["test_size"])
-        print(f'train shape: {self.X_train_index.shape}, test shape: {self.X_test_index.shape}, validate shape: {self.X_val_index.shape}')
+            print(f'train shape: {self.X_train_index.shape}, test shape: {self.X_test_index.shape}, validate shape: {self.X_val_index.shape}')
     
         self.model_init()
+        mlflow.set_tracking_uri('mlruns')
 
     def model_init(self):
         map = {'lightgbm': lgb.LGBMRegressor, 'catboost': catboost.CatBoostRegressor}
@@ -104,7 +115,6 @@ class Train:
             
 
     def train(self, track=False, **params):
-        
         self.model_init()
         self.model.set_params(**params)
         self.model.fit(self.df[self.X_train_index], self.df.target[self.y_train_index])     
@@ -126,28 +136,52 @@ class Train:
 
         return self.metrics(self.pred, track) 
     
+    def test(self, run_id):
+       
+        artifacts_path = mlflow.get_run(run_id).info.artifact_uri + '/test/'
+        Path(artifacts_path).mkdir(parents=True, exist_ok=True)
+
+        self.model = mlflow.pyfunc.load_model(f"runs:/{run_id}/{self.configs['train']['train_name']}")
+
+        self.pred = self.predict()
+        metrics = { name:value for name, value in zip(self.configs['base']['metrics'], 
+                                                  self.metrics(self.pred))}
+        mlflow.log_dict(metrics, './test/test_metrics.json', run_id=run_id)
+        
+        self.df.corr_matrix(self.df.data.columns, self.df.target.name, 
+                            title=f'Корреляционная матрица на тестовой выборке с таргетом {self.df.target.name}',
+                            filepath=join(artifacts_path, 'corr_matrix_for_test.html'),
+                            mlflow_track=True, run_id=run_id)
+        self.plot_preds(artifacts_path, run_id=run_id)
+
+        
+        
+    
 
     def train_with_params(self, params):
-        mlflow.set_tracking_uri('mlruns')
         mlflow.set_experiment(self.configs['train']['experiment_name'])
-        with mlflow.start_run(nested=True):
+        with mlflow.start_run(nested=True, run_name=self.configs['train']['train_name']):
             
             mlflow.log_params(params)
             mlflow.log_input(
                 mlflow.data.from_pandas(
-                    self.df.df, name=self.df.name, targets=self.df.target.name
+                    self.df.df[1:], name=self.df.name, targets=self.configs['train']['target']
                 ), context="training") 
             print(params)
             print({ name:value for name, value in zip(self.configs['base']['metrics'], 
                                                       self.train(True, **params))})
             run_path = mlflow.active_run().info.artifact_uri
-            self.importances(run_path)
-            self.plot_preds(run_path)
-            self.df.corr_matrix(self.df.cols, self.df.target.name, 
-                                title=f'Корреляционная матрица с таргетом {self.df.target.name}',
-                                filepath=join(run_path, 'corr_matrix.html'),
-                                mlflow_track=True)
+            self.log_plots(run_path)
+            
 
+    def log_plots(self, run_path):
+        self.importances(run_path)
+        self.plot_preds(run_path)
+        self.df.corr_matrix(self.df.data.columns, self.df.target.name, 
+                            title=f'Корреляционная матрица с таргетом {self.df.target.name}',
+                            filepath=join(run_path, 'corr_matrix.html'),
+                            mlflow_track=True)
+        
 
     def train_best_trial(self):
         study: optuna.Study = optuna.load_study(study_name=self.configs['optimize']['study_name'],
@@ -188,14 +222,14 @@ class Train:
 
         
 
-    def plot_preds(self, run_path):
+    def plot_preds(self, run_path, run_id=None):
         QQ = pd.DataFrame({"Validate": self.df.target[self.y_val_index], "Predicted": self.pred})
 
         filepath = join(run_path, 'True_predicted_time_series.html')
         fig = px.line(QQ, x=np.arange(len(self.y_val_index)), y=['Validate', 'Predicted'], log_y=True)
         Dataset.plot_template(fig, filepath, 
                               title=f"True and predicted values of {self.y_val_index.name}", 
-                              mlflow_track=True, height=500, width=1500)
+                              mlflow_track=True,run_id=run_id, height=500, width=1500)
 
         filepath = join(run_path, 'QQ_plot.html')
         fig = go.Figure()
@@ -214,5 +248,5 @@ class Train:
             ))
         Dataset.plot_template(fig, filepath, 
                               title=f"QQ Plot of {self.y_val_index.name}", 
-                              mlflow_track=True, height=500, width=1000)
+                              mlflow_track=True, run_id=run_id, height=500, width=1000)
     

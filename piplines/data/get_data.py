@@ -5,10 +5,9 @@ import sys
 
 
 if __name__ == "__main__":  
-    year = 2022
-    print(os.environ['RAW_DATA_PATH'])
+    year = sys.argv[1]
     raw_path = os.environ['RAW_DATA_PATH']
-    dataset = pd.read_csv(f'{raw_path}/{year}/Режимный лист МУИС 2022.xlsx1250_clear.csv', 
+    dataset = pd.read_csv(f'{raw_path}/{year}/Режимный лист МУИС {year}_1250.csv', 
                           parse_dates=['Дата']).drop(columns='Unnamed: 0')
 
     dataset.columns = [
@@ -28,7 +27,7 @@ if __name__ == "__main__":
 
     dataset = dataset.merge(vlagomer)
     init_path =  os.environ['INITIAL_DATA_PATH']
-    dataset = dataset.drop(columns=['Date', 'BEV1L', 'BEV1V_water', 'BEV1V_petrol', 'BEV1T_water'])
+    dataset = dataset.drop(columns=['BEV1L', 'BEV1V_water', 'BEV1V_petrol', 'BEV1T_water'])
 
     dataset.to_csv(f'{init_path}/{year}/1250.csv', index=False)
     

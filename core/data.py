@@ -27,12 +27,16 @@ slice = lambda d, start=0, stop=None, step=1: dict(itertools.islice(d.items(), s
 class Dataset:
 
     #region base
-    def __init__(self, df: pd.DataFrame=None, name='dataset', verbose=VERBOSE, cudf=False):
+    def __init__(self, df: pd.DataFrame=None, name='dataset', verbose=VERBOSE, features_names=None, targets_names=None):
         self.verbose = verbose
         self.name = name
         if isinstance(df, pd.DataFrame):
             self.df = df.copy()
             self.original = df.copy()
+
+        self.features_names = features_names
+        self.targets_names = targets_names
+        
 
     def __getitem__(self, index):
         return self.data.loc[index]
@@ -67,12 +71,14 @@ class Dataset:
     
     @property
     def data(self):
-        return self.df.iloc[:,:-1]
+        return self.df.loc[:, self.features_names] \
+            if self.features_names else self.df.iloc[:,1:-1]
 
     
     @property
     def target(self):
-        return self.df.iloc[:,-1]
+        return self.df.loc[:, self.targets_names] \
+            if self.targets_names else self.df.iloc[:,-1]
     
 
     def columns(self, pattern: list|str):
@@ -279,7 +285,7 @@ class Dataset:
     #region plots 
     @staticmethod 
     def plot_template(fig: go.Figure, filepath=FILEPATH, show=SHOW_PLOTS, append=APPEND_TO_EXISTS, 
-                      verbose=VERBOSE, mlflow_track=False, **layout_params):
+                      verbose=VERBOSE, mlflow_track=False, run_id=None, **layout_params):
         fig.update_layout(template=PLOT_THEME, **layout_params)
         if filepath:
             filepath = filepath if filepath.endswith('.html') else f'{filepath}.html'
@@ -292,7 +298,7 @@ class Dataset:
         if show:
             fig.show()
         if mlflow_track:
-            mlflow.log_artifact(filepath)
+            mlflow.log_artifact(local_path=filepath, run_id=run_id)
 
     def report(self, columns=None, filepath=FILEPATH, show=SHOW_PLOTS):
         columns = self.columns(columns)

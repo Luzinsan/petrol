@@ -14,7 +14,7 @@ base:
 optimize:
     n_trials: 100
     storage: "sqlite:///db.sqlite3"
-    study_name: lightgbm_study_try_old
+    study_name: 2022_lightgbm_all
     directions: [maximize, minimize, minimize, minimize]
     load_if_exists: true
 
@@ -36,8 +36,25 @@ optimize:
     
 
 train:
-    experiment_name: LightGBM_try_old
-    train_name: LightGBM_try_old
+    features: ['BlockP', 'BlockT', 'C1P', 'C1T', 'C1L', 'C2P', 'C2T',
+        'C2interfacial_L', 'С2petrol_L', 'OH_T', 'OH_interfacial_L', 'OH_P',
+        'C3T', 'C3L', 'P1Tinput', 'P1Toutput', 'P1Pinput', 'P1Poutput',
+        'P1Тcoolant', 'P1Tgases', 'P1Рburner', 'P2Tinput', 'P2Toutput',
+        'P2Pinput', 'P2Poutput', 'P2Tcoolant', 'P2Tgases', 'P2Pburner', 'Water']
+    # без сепаратора и воды
+    # features: ['BlockP', 'BlockT', 'C1P', 'C1T', 'C1L', 'P1Tinput',
+    #     'P1Toutput', 'P1Pinput', 'P1Poutput', 'P1Тcoolant', 'P1Tgases',
+    #     'P1Рburner', 'P2Tinput', 'P2Toutput', 'P2Pinput', 'P2Poutput',
+    #     'P2Tcoolant', 'P2Tgases', 'P2Pburner']
+    # c печкой-1
+    # features: ['BlockP', 'BlockT', 'C1P', 'C1T', 'C1L', 'P1Tinput',
+    #     'P1Toutput', 'P1Pinput', 'P1Poutput', 'P1Тcoolant', 'P1Tgases',
+    #     'P1Рburner']
+    # только блок и сепаратор-1
+    # features: ['BlockP', 'BlockT', 'C1P', 'C1T', 'C1L']
+    target: Vlagomer
+    experiment_name: LightGBM_all
+    train_name: LightGBM_2022
     target_score: r2
     n_estimators: 1000
 

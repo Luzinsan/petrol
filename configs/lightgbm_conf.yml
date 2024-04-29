@@ -14,7 +14,7 @@ base:
 optimize:
     n_trials: 100
     storage: "sqlite:///db.sqlite3"
-    study_name: 2022_lightgbm_all
+    study_name: 2022_2023_lightgbm_all
     directions: [maximize, minimize, minimize, minimize]
     load_if_exists: true
 
@@ -53,8 +53,8 @@ train:
     # только блок и сепаратор-1
     # features: ['BlockP', 'BlockT', 'C1P', 'C1T', 'C1L']
     target: Vlagomer
-    experiment_name: LightGBM_all
-    train_name: LightGBM_2022
+    experiment_name: LightGBM_all_2022_2023
+    train_name: LightGBM_2022_2023
     target_score: r2
     n_estimators: 1000
 

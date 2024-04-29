@@ -1,4 +1,0 @@
-[core]
-    autostage = true
-['remote "local_storage"']
-    url = /home/prog3/dvc_local_storage/

@@ -21,6 +21,38 @@ from pathlib import Path
 import mlflow
 from mlflow.models import infer_signature
 from yaml import load, Loader
+import torch.nn as nn
+
+
+# class NeuralNet:
+
+#     def __init__(self):
+#         # We optimize the number of layers, hidden units and dropout ratio in each layer.
+#         n_layers = trial.suggest_int("n_layers", 1, 3)
+#         layers = []
+
+#         in_features = 28 * 28
+#         for i in range(n_layers):
+#             out_features = trial.suggest_int("n_units_l{}".format(i), 4, 128)
+#             layers.append(nn.Linear(in_features, out_features))
+#             layers.append(nn.ReLU())
+#             p = trial.suggest_float("dropout_l{}".format(i), 0.2, 0.5)
+#             layers.append(nn.Dropout(p))
+
+#             in_features = out_features
+#         layers.append(nn.Linear(in_features, CLASSES))
+#         layers.append(nn.LogSoftmax(dim=1))
+
+#         return nn.Sequential(*layers)
+
+#     def set_params(self, **params):
+#         for key, value in params.items():
+#             setattr(self, key, value)
+
+#     def fit(self):
+#         pass
+
+        
 
 
 class Train:
@@ -54,6 +86,10 @@ class Train:
     
         self.model_init()
         mlflow.set_tracking_uri('mlruns')
+
+
+    
+
 
     def model_init(self):
         map = {'lightgbm': lgb.LGBMRegressor, 'catboost': catboost.CatBoostRegressor}
@@ -96,6 +132,7 @@ class Train:
         }
         return self.train(False, **params)  
         
+
     def optimize(self):
         n_trials=self.configs['optimize'].pop('n_trials')
         study = optuna.create_study(
